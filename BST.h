@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <vector>
+#include <queue>
 #include "BSTNode.h"
 
 using namespace std;
@@ -20,30 +21,39 @@ namespace trees {
         BSTNode<T>* getMin(BSTNode<T> *node);
         BSTNode<T>* getMax(trees::BSTNode<T> *node);
         int getHeight(BSTNode<T>* nd);
+        int getOneChild(trees::BSTNode<T> *current);
+        int getLeafCount(trees::BSTNode<T> *nd);
+        int getSize(BSTNode<T>* nd);
 
     public:
         BSTNode<T> *root;
         BST<T>();
         BST<T>(std::initializer_list<T> initializerList);
+        BST(vector<T>preOrdList, vector<T>inOrdLst);
+        int findDistance(T first, T second);
         //~BST();
+        bool isLeaf(trees::BSTNode<T> *nd);
         int size();
         int height();
         int leafCount();
-        int getLeafCount(trees::BSTNode<T> *nd);
+        int oneChild();
         void add(const T value);
         BSTNode<T>* find(const T value);
         BSTNode<T>* successor(const T value);
         BSTNode<T>* predecessor(const T value);
         BSTNode<T>* min();
         BSTNode<T>* max();
-        //void leftRotate(const T value);
-        //void rightRotate(const T value);
+        void leftRotate(const T value);
+        void rightRotate(const T value);
         void deleteNode(T value);
         vector<T> preOrderTraverse();
         vector<T> inOrderTraverse();
         vector<T> postOrderTraverse();
+        vector<T> levelOrderTraverse();
+        T lessThan(const T value);
+        int kThSmallest(int K, trees::BST<T> tree);
+        //vector<T> zigzagLevelOrderTraverse();
         //void deleteTree(BSTNode<T> *node);
-        int getSize(BSTNode<T>* nd);
     };
 }
 template<class T>
@@ -57,6 +67,12 @@ trees::BST<T>::BST(initializer_list<T> initializerList) {
     for (auto x : initializerList) {
         add(x);
     }
+}
+
+template<class T>
+trees::BST<T>::BST(vector<T> preOrdList, vector<T> inOrdLst) {
+    preOrdList = preOrderTraverse();
+    inOrdLst = inOrderTraverse();
 }
 
 template<class T>
@@ -164,7 +180,7 @@ vector<T> trees::BST<T>::postOrderTraverse() {
 template<class T>
 void trees::BST<T>::traversingInOrder(trees::BSTNode<T> *node, vector<T> &v) {
     if (node != nullptr) {
-        traversingInOrder(node->left, v );
+        traversingInOrder(node->left, v);
         v.push_back(node->data);
         traversingInOrder(node->right, v);
     }
@@ -173,7 +189,7 @@ template<class T>
 void trees::BST<T>::traversingPreOrder(trees::BSTNode<T> *node, vector<T> &v) {
     if (node != nullptr) {
         v.push_back(node->data);
-        traversingPreOrder(node->left, v );
+        traversingPreOrder(node->left, v);
         traversingPreOrder(node->right, v);
     }
 }
@@ -181,10 +197,30 @@ void trees::BST<T>::traversingPreOrder(trees::BSTNode<T> *node, vector<T> &v) {
 template<class T>
 void trees::BST<T>::traversingPostOrder(trees::BSTNode<T> *node, vector<T> &v) {
     if (node != nullptr) {
-        traversingPostOrder(node->left, v );
+        traversingPostOrder(node->left, v);
         traversingPostOrder(node->right, v);
         v.push_back(node->data);
     }
+}
+
+template<class T>
+vector<T> trees::BST<T>::levelOrderTraverse() {
+    queue<BSTNode<T>*> Q;
+    Q.push(root);
+    vector<T> v;
+
+    while (Q.size() != 0) {
+        BSTNode<T>* current = Q.front();
+        Q.pop();
+        v.push_back(current->data);
+        if (current->left != nullptr) {
+            Q.push(current->left);
+        }
+        if (current->right != nullptr) {
+            Q.push(current->right);
+        }
+    }
+    return v;
 }
 
 template<class T>
@@ -317,6 +353,179 @@ void trees::BST<T>::deleteNode(T value) {
             current->data = success->data;
         }
     }
+}
+
+template<class T>
+void trees::BST<T>::rightRotate(const T value) {
+    BSTNode<T> *node = find(value);
+    if (node == nullptr) {
+        return;
+    }
+    if (isLeaf(node)) {
+        return;
+    }   else {
+        BSTNode<T> *par = node->parent;
+        if (par == nullptr) {
+            if (node->left != nullptr) {
+                BSTNode<T> *leftNode = node->left;
+                node->left = leftNode->right;
+                root = leftNode;
+                root->right = node;
+                node->parent = root;
+            }
+        }
+    }
+}
+
+template<class T>
+void trees::BST<T>::leftRotate(const T value) {
+    BSTNode<T> *node = find(value);
+    if (node == nullptr) {
+        return;
+    }
+    if (isLeaf(node)) {
+        return;
+    }   else {
+        BSTNode<T> *par = node->parent;
+        if (par == nullptr) {
+            if (node->right != nullptr) {
+                BSTNode<T> *rightNode = node->right;
+                node->right = rightNode->left;
+                root = rightNode;
+                root->left = node;
+                node->parent = root;
+            }
+        }
+    }
+}
+
+template<class T>
+bool trees::BST<T>::isLeaf(trees::BSTNode<T> *nd) {
+    return nd != nullptr &&
+        nd->right == nullptr &&
+        nd->left == nullptr;
+}
+
+template<class T>
+int trees::BST<T>::findDistance(T first, T second) {
+    int firstCount = 0;
+    int secondCount = 0;
+
+    BSTNode<T>* firstCurrent = root;
+    BSTNode<T>* secondCurrent = root;
+    if (firstCurrent == nullptr) {
+        return 0;
+    }
+    if (secondCurrent == nullptr) {
+        return 0;
+    }
+    while (firstCurrent != nullptr) {
+        if (firstCurrent->data < first) {
+            firstCurrent = firstCurrent->right;
+            firstCount++;
+        } else if (firstCurrent->data > first) {
+            firstCurrent = firstCurrent->left;
+            firstCount++;
+        } else {
+            break;
+        }
+    }
+    while (secondCurrent != nullptr) {
+        if (secondCurrent->data < second) {
+            secondCurrent = secondCurrent->right;
+            secondCount++;
+        } else if (secondCurrent->data > second) {
+            secondCurrent = secondCurrent->left;
+            secondCount++;
+        } else {
+            break;
+        }
+    }
+    if ((first > root->data && second > root->data) ||
+            (first < root->data && second < root->data)) {
+        return abs(firstCount-secondCount);
+    } else {
+        return firstCount+secondCount;
+    }
+}
+
+template<class T>
+int trees::BST<T>::oneChild() {
+    return getOneChild(root);
+}
+
+template<class T>
+int trees::BST<T>::getOneChild(BSTNode<T> *current) {
+    int count = 0;
+    if (current == nullptr) {
+        return 0;
+    }
+    queue<BSTNode<T>*> q;
+    q.push(current);
+    while (!q.empty()) {
+        BSTNode<T>* temp = q.front();
+        q.pop();
+
+        if ((!temp->left && temp->right) ||
+            (temp->left && !temp->right)) {
+            count++;
+        }
+
+        if (temp->left != nullptr) {
+            q.push(temp->left);
+        }
+        if (temp->right != nullptr) {
+            q.push(temp->right);
+        }
+    }
+    return count;
+}
+
+template<class T>
+T trees::BST<T>::lessThan(const T value) {
+    BSTNode<T>* current = root;
+
+    if (current == nullptr) {
+        return -1;
+    }
+    if (current->data == value) {
+        return current->data;
+    } else {
+        if (current->data < value) {
+            current = current->right;
+            if (current->right->data > value) {
+                if (current->data <= value) {
+                    return current->data;
+                } else {
+                    current = current->left;
+                    return current->data;
+                }
+            } else {
+                current = current->right;
+                if (current->data <= value) {
+                    return current->data;
+                } else {
+                    current = current->left;
+                    return current->data;
+                }
+            }
+        } else if (current->data > value) {
+            current = current->left;
+            if (current->right != nullptr) {
+                current = current->right;
+                return current->data;
+            }
+        }
+    }
+}
+
+template<class T>
+int trees::BST<T>::kThSmallest(int K, trees::BST<T> tree) {
+    BSTNode<T>* minimum = tree.min();
+    for (int i = 0; i < K - 1; i++) {
+        minimum = successor(minimum->data);
+    }
+    return minimum->data;
 }
 
 
