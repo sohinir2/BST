@@ -16,5 +16,5 @@ int main() {
 
     //cout << ex3.kThSmallest(5, ex3);
 
-    cout << ex2.findDistance(3, 5);
+    //cout << ex2.findDistance(3, 5);
 }

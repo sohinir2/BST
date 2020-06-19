@@ -12,17 +12,20 @@
 
 using namespace std;
 namespace trees {
+    enum Direction {
+        Left,
+        Right,
+    };
     template<class T>
     class BST {
     private:
         void traversingInOrder(BSTNode<T> *node, std::vector<T>& v);
         void traversingPreOrder(BSTNode<T> *node, std::vector<T>& v);
         void traversingPostOrder(BSTNode<T> *node, std::vector<T>& v);
+        trees::BSTNode<T> *findParentforAdd(const T value);
         BSTNode<T>* getMin(BSTNode<T> *node);
         BSTNode<T>* getMax(trees::BSTNode<T> *node);
         int getHeight(BSTNode<T>* nd);
-        int getOneChild(trees::BSTNode<T> *current);
-        int getLeafCount(trees::BSTNode<T> *nd);
         int getSize(BSTNode<T>* nd);
 
     public:
@@ -30,14 +33,14 @@ namespace trees {
         BST<T>();
         BST<T>(std::initializer_list<T> initializerList);
         BST(vector<T>preOrdList, vector<T>inOrdLst);
-        int findDistance(T first, T second);
         //~BST();
-        bool isLeaf(trees::BSTNode<T> *nd);
         int size();
         int height();
-        int leafCount();
-        int oneChild();
-        void add(const T value);
+        bool isLeaf(BSTNode<T> *nd);
+        bool isLeftChild(BSTNode<T>* nd);
+        bool isRightChild(BSTNode<T>* nd);
+        void addNode(const T value);
+        virtual void addNode(BSTNode<T> *node);
         BSTNode<T>* find(const T value);
         BSTNode<T>* successor(const T value);
         BSTNode<T>* predecessor(const T value);
@@ -45,13 +48,14 @@ namespace trees {
         BSTNode<T>* max();
         void leftRotate(const T value);
         void rightRotate(const T value);
+        void rotateNode(T value, Direction dir);
         void deleteNode(T value);
         vector<T> preOrderTraverse();
         vector<T> inOrderTraverse();
         vector<T> postOrderTraverse();
         vector<T> levelOrderTraverse();
-        T lessThan(const T value);
-        int kThSmallest(int K, trees::BST<T> tree);
+        //T lessThan(const T value);
+        //int kThSmallest(int K, trees::BST<T> tree);
         //vector<T> zigzagLevelOrderTraverse();
         //void deleteTree(BSTNode<T> *node);
     };
@@ -65,7 +69,7 @@ template<class T>
 trees::BST<T>::BST(initializer_list<T> initializerList) {
     root = nullptr;
     for (auto x : initializerList) {
-        add(x);
+        addNode(x);
     }
 }
 
@@ -74,7 +78,12 @@ trees::BST<T>::BST(vector<T> preOrdList, vector<T> inOrdLst) {
     preOrdList = preOrderTraverse();
     inOrdLst = inOrderTraverse();
 }
-
+template<class T>
+bool trees::BST<T>::isLeaf(trees::BSTNode<T> *nd) {
+    return nd != nullptr &&
+           nd->right == nullptr &&
+           nd->left == nullptr;
+}
 template<class T>
 trees::BSTNode<T> *trees::BST<T>::find(const T value) {
     BSTNode<T> *current = root;
@@ -90,27 +99,52 @@ trees::BSTNode<T> *trees::BST<T>::find(const T value) {
     return nullptr;
 }
 
+template <class T>
+trees::BSTNode<T> *trees::BST<T>::findParentforAdd(const T value) {
+    BSTNode<T> *current = root;
+    BSTNode<T> *par = nullptr;
+    while (current != nullptr) {
+        if (current->data > value) {
+            par = current;
+            current = current->left;
+        } else if (current->data < value) {
+            par = current;
+            current = current->right;
+        }
+    }
+    return par;
+}
+
 template<class T>
-void trees::BST<T>::add(const T value) {
+void trees::BST<T>::addNode(const T value) {
     if (root == nullptr) {
         root = new BSTNode<T>(value);
     } else {
         BSTNode<T> *current = root;
-        BSTNode<T> *par = nullptr;
-        while (current != nullptr) {
-            if (current->data > value) {
-                par = current;
-                current = current->left;
-            } else if (current->data < value) {
-                par = current;
-                current = current->right;
-            }
-        }
+        BSTNode<T> *par = findParentforAdd(value);
         if (par->data < value) {
             par->right = new BSTNode<T>(value);
             par->right->parent = par;
         } else if (par->data > value) {
             par->left = new BSTNode<T>(value);
+            par->left->parent = par;
+        } else {
+            cout << "Cannot handle duplicate values" << endl;
+        }
+    }
+}
+template<class T>
+void trees::BST<T>::addNode(BSTNode <T> *node) {
+    if (root == nullptr) {
+        root = node;
+    } else {
+        BSTNode<T> *current = root;
+        BSTNode<T> *par = findParentforAdd(node->data);
+        if (par->data < node->data) {
+            par->right = node;
+            par->right->parent = par;
+        } else if (par->data > node->data) {
+            par->left = node;
             par->left->parent = par;
         } else {
             cout << "Cannot handle duplicate values" << endl;
@@ -292,24 +326,6 @@ int trees::BST<T>::height() {
 }
 
 template<class T>
-int trees::BST<T>::getLeafCount(trees::BSTNode<T> *nd) {
-    BSTNode<T>* current = nd;
-    if (current == nullptr) {
-        return 0;
-    } else if (current->left == nullptr && current->right == nullptr) {
-        return 1;
-    } else {
-        int leafcount = getLeafCount(current->left) + getLeafCount(current->right);
-        return leafcount;
-    }
-}
-
-template<class T>
-int trees::BST<T>::leafCount() {
-    return getLeafCount(root);
-}
-
-template<class T>
 void trees::BST<T>::deleteNode(T value) {
     BSTNode<T>* current = find(value);
     if (current == nullptr) {
@@ -398,134 +414,60 @@ void trees::BST<T>::leftRotate(const T value) {
         }
     }
 }
-
 template<class T>
-bool trees::BST<T>::isLeaf(trees::BSTNode<T> *nd) {
-    return nd != nullptr &&
-        nd->right == nullptr &&
-        nd->left == nullptr;
+
+void trees::BST<T>::rotateNode(T value, Direction dir){
+    //Find the node corresponding to the value supplied
+    BSTNode<T>* nodeToRotate = find(value);
+    //Can't do much if value is not found in the tree
+
+    if(nodeToRotate == nullptr) {
+        return;
+    }
+    if((dir == Right && nodeToRotate->left == nullptr) || (dir == Left && nodeToRotate->right == nullptr)) {
+        return;
+    }
+
+    BSTNode<T>* newParent = (dir == Left)?nodeToRotate->right:nodeToRotate->left;
+    BSTNode<T>* grandParent = nodeToRotate->parent;
+
+    if(grandParent) {
+        if(isLeftChild(nodeToRotate)) {
+            grandParent->left = newParent;
+        }
+        else {
+            grandParent->right = newParent;
+        }
+        newParent->parent = grandParent;
+    }
+
+    else {
+        root = newParent;
+    }
+    if(dir == Left){
+        nodeToRotate->right = newParent->left;
+        newParent->left = nodeToRotate;
+
+    }
+    else {
+        nodeToRotate->left = newParent->right;
+        newParent->right = nodeToRotate;
+    }
+    nodeToRotate->parent = newParent;
+
+    if(newParent != nullptr)
+        newParent->parent = grandParent;
+    return;
 }
 
 template<class T>
-int trees::BST<T>::findDistance(T first, T second) {
-    int firstCount = 0;
-    int secondCount = 0;
-
-    BSTNode<T>* firstCurrent = root;
-    BSTNode<T>* secondCurrent = root;
-    if (firstCurrent == nullptr) {
-        return 0;
-    }
-    if (secondCurrent == nullptr) {
-        return 0;
-    }
-    while (firstCurrent != nullptr) {
-        if (firstCurrent->data < first) {
-            firstCurrent = firstCurrent->right;
-            firstCount++;
-        } else if (firstCurrent->data > first) {
-            firstCurrent = firstCurrent->left;
-            firstCount++;
-        } else {
-            break;
-        }
-    }
-    while (secondCurrent != nullptr) {
-        if (secondCurrent->data < second) {
-            secondCurrent = secondCurrent->right;
-            secondCount++;
-        } else if (secondCurrent->data > second) {
-            secondCurrent = secondCurrent->left;
-            secondCount++;
-        } else {
-            break;
-        }
-    }
-    if ((first > root->data && second > root->data) ||
-            (first < root->data && second < root->data)) {
-        return abs(firstCount-secondCount);
-    } else {
-        return firstCount+secondCount;
-    }
+bool trees::BST<T>::isLeftChild(trees::BSTNode<T> *nd) {
+    return (nd != nullptr && (nd->parent->left == nd));
 }
 
 template<class T>
-int trees::BST<T>::oneChild() {
-    return getOneChild(root);
-}
-
-template<class T>
-int trees::BST<T>::getOneChild(BSTNode<T> *current) {
-    int count = 0;
-    if (current == nullptr) {
-        return 0;
-    }
-    queue<BSTNode<T>*> q;
-    q.push(current);
-    while (!q.empty()) {
-        BSTNode<T>* temp = q.front();
-        q.pop();
-
-        if ((!temp->left && temp->right) ||
-            (temp->left && !temp->right)) {
-            count++;
-        }
-
-        if (temp->left != nullptr) {
-            q.push(temp->left);
-        }
-        if (temp->right != nullptr) {
-            q.push(temp->right);
-        }
-    }
-    return count;
-}
-
-template<class T>
-T trees::BST<T>::lessThan(const T value) {
-    BSTNode<T>* current = root;
-
-    if (current == nullptr) {
-        return -1;
-    }
-    if (current->data == value) {
-        return current->data;
-    } else {
-        if (current->data < value) {
-            current = current->right;
-            if (current->right->data > value) {
-                if (current->data <= value) {
-                    return current->data;
-                } else {
-                    current = current->left;
-                    return current->data;
-                }
-            } else {
-                current = current->right;
-                if (current->data <= value) {
-                    return current->data;
-                } else {
-                    current = current->left;
-                    return current->data;
-                }
-            }
-        } else if (current->data > value) {
-            current = current->left;
-            if (current->right != nullptr) {
-                current = current->right;
-                return current->data;
-            }
-        }
-    }
-}
-
-template<class T>
-int trees::BST<T>::kThSmallest(int K, trees::BST<T> tree) {
-    BSTNode<T>* minimum = tree.min();
-    for (int i = 0; i < K - 1; i++) {
-        minimum = successor(minimum->data);
-    }
-    return minimum->data;
+bool trees::BST<T>::isRightChild(trees::BSTNode<T> *nd) {
+    return (nd != nullptr && (nd->parent->right == nd));
 }
 
 

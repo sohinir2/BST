@@ -3,4 +3,5 @@ project(BST)
 
 set(CMAKE_CXX_STANDARD 14)
 
-add_executable(BST main.cpp BSTNode.h BST.h)
+add_executable(BST main.cpp BSTNode.h BST.h Catch_tests/BSTtest.cpp BSTExtras.h AVLNode.h AVL.h)
+add_subdirectory(Catch_tests)

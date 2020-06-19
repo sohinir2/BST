@@ -34,8 +34,6 @@ trees::BSTNode<T>::BSTNode(){}
 
 template<class T>
 trees::BSTNode<T>::BSTNode(T value){
-    if(value == NULL)
-        throw std::invalid_argument("BSTNode value cannot be null");
     data = value;
     left = nullptr;
     right = nullptr;
